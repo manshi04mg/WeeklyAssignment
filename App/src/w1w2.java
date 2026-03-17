@@ -2,131 +2,129 @@ import java.util.*;
 
 public class w1w2 {
 
-    static class ParkingSpot{
+    static class Transaction{
 
-        String license;
-        long entryTime;
-        boolean occupied;
+        int id;
+        int amount;
+        String merchant;
+        int time; // minutes
+        String account;
 
-        ParkingSpot(){
+        Transaction(int id,int amount,
+                    String merchant,
+                    int time,String account){
 
-            license = null;
-            occupied = false;
+            this.id=id;
+            this.amount=amount;
+            this.merchant=merchant;
+            this.time=time;
+            this.account=account;
         }
     }
 
-    static int SIZE = 500;
+    static List<Transaction> transactions =
+            new ArrayList<>();
 
-    static ParkingSpot table[] =
-            new ParkingSpot[SIZE];
+    // Classic Two Sum
+    static void findTwoSum(int target){
 
-    static int totalProbes = 0;
-    static int vehicles = 0;
+        HashMap<Integer,Transaction> map =
+                new HashMap<>();
 
-    // Initialize parking
-    static{
+        for(Transaction t:transactions){
 
-        for(int i=0;i<SIZE;i++)
-            table[i] = new ParkingSpot();
-    }
+            int complement =
+                    target - t.amount;
 
-    // Hash function
-    static int hash(String license){
-
-        return Math.abs(
-                license.hashCode()) % SIZE;
-    }
-
-    // Park vehicle
-    static void parkVehicle(String license){
-
-        int index = hash(license);
-
-        int probes = 0;
-
-        while(table[index].occupied){
-
-            index = (index+1)%SIZE;
-            probes++;
-        }
-
-        table[index].license = license;
-
-        table[index].entryTime =
-                System.currentTimeMillis();
-
-        table[index].occupied = true;
-
-        vehicles++;
-        totalProbes += probes;
-
-        System.out.println(
-                "Assigned spot #"+index+
-                        " ("+probes+" probes)");
-    }
-
-    // Exit vehicle
-    static void exitVehicle(String license){
-
-        int index = hash(license);
-
-        while(table[index].occupied){
-
-            if(table[index].license.equals(license)){
-
-                long duration =
-                        (System.currentTimeMillis()
-                                -table[index].entryTime)/1000;
-
-                table[index].occupied=false;
-
-                vehicles--;
-
-                double fee =
-                        duration*0.01;
+            if(map.containsKey(complement)){
 
                 System.out.println(
-                        "Spot #"+index+
-                                " freed Duration: "+
-                                duration+" sec Fee: $"+
-                                fee);
-
-                return;
+                        "Pair: "+
+                                map.get(complement).id+
+                                " , "+t.id);
             }
 
-            index=(index+1)%SIZE;
+            map.put(t.amount,t);
         }
-
-        System.out.println("Vehicle not found");
     }
 
-    // Statistics
-    static void getStatistics(){
+    // Two sum with time window (60 min)
+    static void twoSumTime(int target){
 
-        double occupancy =
-                ((double)vehicles/SIZE)*100;
+        for(int i=0;i<transactions.size();i++){
 
-        double avgProbes =
-                (vehicles==0)?0:
-                        (double)totalProbes/vehicles;
+            for(int j=i+1;
+                j<transactions.size();j++){
 
-        System.out.println(
-                "Occupancy: "+occupancy+"%");
+                if(transactions.get(i).amount +
+                        transactions.get(j).amount
+                        == target &&
 
-        System.out.println(
-                "Avg Probes: "+avgProbes);
+                        Math.abs(
+                                transactions.get(i).time -
+                                        transactions.get(j).time)
+                                <=60){
+
+                    System.out.println(
+                            "Time pair: "+
+                                    transactions.get(i).id+
+                                    " , "+
+                                    transactions.get(j).id);
+                }
+            }
+        }
+    }
+
+    // Duplicate detection
+    static void detectDuplicates(){
+
+        HashMap<String,
+                List<Transaction>> map =
+                new HashMap<>();
+
+        for(Transaction t:transactions){
+
+            String key =
+                    t.amount+"-"+t.merchant;
+
+            map.putIfAbsent(key,
+                    new ArrayList<>());
+
+            map.get(key).add(t);
+        }
+
+        for(String key:map.keySet()){
+
+            if(map.get(key).size()>1){
+
+                System.out.println(
+                        "Duplicate: "+key);
+            }
+        }
     }
 
     public static void main(String[] args) {
 
-        parkVehicle("ABC1234");
+        transactions.add(
+                new Transaction(1,500,
+                        "StoreA",600,"acc1"));
 
-        parkVehicle("ABC1235");
+        transactions.add(
+                new Transaction(2,300,
+                        "StoreB",615,"acc2"));
 
-        parkVehicle("XYZ9999");
+        transactions.add(
+                new Transaction(3,200,
+                        "StoreC",630,"acc3"));
 
-        exitVehicle("ABC1234");
+        transactions.add(
+                new Transaction(4,500,
+                        "StoreA",640,"acc4"));
 
-        getStatistics();
+        findTwoSum(500);
+
+        twoSumTime(500);
+
+        detectDuplicates();
     }
 }
