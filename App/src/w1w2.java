@@ -2,70 +2,58 @@ import java.util.*;
 
 public class w1w2 {
 
-    static HashMap<String,Integer> usernameMap = new HashMap<>();
-    static HashMap<String,Integer> attemptFrequency = new HashMap<>();
+    static HashMap<String,Integer> stockMap = new HashMap<>();
+    static LinkedHashMap<Integer,String> waitingList =
+            new LinkedHashMap<>();
 
-    static boolean checkAvailability(String username){
+    static int waitPosition = 1;
 
-        attemptFrequency.put(username,
-                attemptFrequency.getOrDefault(username,0)+1);
+    // Check stock
+    static void checkStock(String product){
 
-        return !usernameMap.containsKey(username);
+        if(stockMap.containsKey(product))
+            System.out.println(stockMap.get(product)
+                    +" units available");
+        else
+            System.out.println("Product not found");
     }
 
-    static void register(String username,int id){
+    // Purchase item
+    static void purchaseItem(String product,int userId){
 
-        if(!usernameMap.containsKey(username))
-            usernameMap.put(username,id);
-    }
+        if(stockMap.get(product) > 0){
 
-    static List<String> suggestAlternatives(String username){
+            stockMap.put(product,
+                    stockMap.get(product)-1);
 
-        List<String> list = new ArrayList<>();
-
-        for(int i=1;i<=5;i++){
-
-            String newName = username+i;
-
-            if(!usernameMap.containsKey(newName))
-                list.add(newName);
+            System.out.println("Success, "
+                    +stockMap.get(product)
+                    +" units remaining");
         }
+        else{
 
-        String alt = username.replace("_",".");
+            waitingList.put(userId,product);
 
-        if(!usernameMap.containsKey(alt))
-            list.add(alt);
+            System.out.println(
+                    "Added to waiting list, position #"
+                            +waitPosition);
 
-        return list;
-    }
-
-    static String getMostAttempted(){
-
-        int max = 0;
-        String result = "";
-
-        for(String user : attemptFrequency.keySet()){
-
-            if(attemptFrequency.get(user) > max){
-
-                max = attemptFrequency.get(user);
-                result = user;
-            }
+            waitPosition++;
         }
-
-        return result;
     }
 
     public static void main(String[] args) {
 
-        register("john_doe",101);
-        register("admin",102);
+        stockMap.put("IPHONE15_256GB",100);
 
-        System.out.println(checkAvailability("john_doe"));
-        System.out.println(checkAvailability("jane_smith"));
+        checkStock("IPHONE15_256GB");
 
-        System.out.println(suggestAlternatives("john_doe"));
+        purchaseItem("IPHONE15_256GB",12345);
+        purchaseItem("IPHONE15_256GB",67890);
 
-        System.out.println(getMostAttempted());
+        // simulate stock ending
+        stockMap.put("IPHONE15_256GB",0);
+
+        purchaseItem("IPHONE15_256GB",99999);
     }
 }
