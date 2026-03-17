@@ -2,94 +2,106 @@ import java.util.*;
 
 public class w1w2 {
 
-    static class DNSEntry{
-
-        String ip;
-        long expiryTime;
-
-        DNSEntry(String ip,int ttl){
-
-            this.ip = ip;
-            this.expiryTime =
-                    System.currentTimeMillis() + ttl*1000;
-        }
-    }
-
-    static HashMap<String,DNSEntry> cache =
+    static HashMap<String, Set<String>> ngramMap =
             new HashMap<>();
 
-    static int hits = 0;
-    static int misses = 0;
+    static int N = 5; // 5-gram
 
-    // Resolve domain
-    static String resolve(String domain){
+    // Generate n-grams
+    static List<String> generateNgrams(String text){
 
-        long currentTime =
-                System.currentTimeMillis();
+        List<String> list = new ArrayList<>();
 
-        if(cache.containsKey(domain)){
+        String words[] = text.split(" ");
 
-            DNSEntry entry = cache.get(domain);
+        for(int i=0;i<=words.length-N;i++){
 
-            if(currentTime < entry.expiryTime){
+            String gram = "";
 
-                hits++;
-                System.out.println(
-                        "Cache HIT");
+            for(int j=0;j<N;j++)
+                gram += words[i+j]+" ";
 
-                return entry.ip;
-            }
-            else{
+            list.add(gram.trim());
+        }
 
-                System.out.println(
-                        "Cache EXPIRED");
+        return list;
+    }
 
-                cache.remove(domain);
+    // Store document ngrams
+    static void addDocument(String docId,
+                            String text){
+
+        List<String> grams =
+                generateNgrams(text);
+
+        for(String gram:grams){
+
+            ngramMap.putIfAbsent(gram,
+                    new HashSet<>());
+
+            ngramMap.get(gram).add(docId);
+        }
+
+        System.out.println(docId+
+                " → Extracted "+grams.size()
+                +" n-grams");
+    }
+
+    // Analyze plagiarism
+    static void analyzeDocument(String docId,
+                                String text){
+
+        List<String> grams =
+                generateNgrams(text);
+
+        HashMap<String,Integer> matchCount =
+                new HashMap<>();
+
+        for(String gram:grams){
+
+            if(ngramMap.containsKey(gram)){
+
+                for(String doc:
+                        ngramMap.get(gram)){
+
+                    matchCount.put(doc,
+                            matchCount.getOrDefault(
+                                    doc,0)+1);
+                }
             }
         }
 
-        misses++;
+        for(String doc:matchCount.keySet()){
 
-        System.out.println(
-                "Cache MISS → Query upstream");
+            int matches = matchCount.get(doc);
 
-        // simulate DNS lookup
-        String newIP =
-                "172.217."+new Random().nextInt(50)
-                        +"."+new Random().nextInt(255);
+            double similarity =
+                    ((double)matches/grams.size())*100;
 
-        cache.put(domain,
-                new DNSEntry(newIP,5));
+            System.out.println(
+                    "Found "+matches+
+                            " matching n-grams with "+doc);
 
-        return newIP;
+            System.out.println(
+                    "Similarity: "+
+                            similarity+"%");
+
+            if(similarity>60)
+                System.out.println(
+                        "PLAGIARISM DETECTED");
+        }
     }
 
-    // Cache statistics
-    static void getCacheStats(){
+    public static void main(String[] args) {
 
-        int total = hits + misses;
+        String doc1 =
+                "data structures and algorithms are important subjects in computer science";
 
-        double hitRate =
-                (total==0)?0:((double)hits/total)*100;
+        String doc2 =
+                "data structures and algorithms are important topics in computer science";
 
-        System.out.println(
-                "Hit Rate: "+hitRate+"%");
-    }
+        addDocument("essay_089",doc1);
 
-    public static void main(String[] args)
-            throws Exception{
-
-        System.out.println(
-                resolve("google.com"));
-
-        System.out.println(
-                resolve("google.com"));
-
-        Thread.sleep(6000);
-
-        System.out.println(
-                resolve("google.com"));
-
-        getCacheStats();
+        analyzeDocument("essay_123",doc2);
     }
 }
