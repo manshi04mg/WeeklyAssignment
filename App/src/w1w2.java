@@ -2,103 +2,92 @@ import java.util.*;
 
 public class w1w2 {
 
-    static HashMap<String,Integer> pageViews =
-            new HashMap<>();
+    static class TokenBucket{
 
-    static HashMap<String,Set<String>> uniqueVisitors =
-            new HashMap<>();
+        int tokens;
+        int maxTokens;
+        long lastRefillTime;
 
-    static HashMap<String,Integer> trafficSource =
-            new HashMap<>();
+        TokenBucket(int max){
 
-    // Process event
-    static void processEvent(String url,
-                             String userId,
-                             String source){
-
-        // count page views
-        pageViews.put(url,
-                pageViews.getOrDefault(url,0)+1);
-
-        // unique visitors
-        uniqueVisitors.putIfAbsent(url,
-                new HashSet<>());
-
-        uniqueVisitors.get(url).add(userId);
-
-        // traffic sources
-        trafficSource.put(source,
-                trafficSource.getOrDefault(source,0)+1);
-    }
-
-    // Top pages
-    static void getTopPages(){
-
-        List<Map.Entry<String,Integer>> list =
-                new ArrayList<>(pageViews.entrySet());
-
-        list.sort((a,b)->b.getValue()-a.getValue());
-
-        System.out.println("Top Pages:");
-
-        int count = 0;
-
-        for(Map.Entry<String,Integer> e:list){
-
-            String url = e.getKey();
-            int views = e.getValue();
-
-            int unique =
-                    uniqueVisitors.get(url).size();
-
-            System.out.println(url+
-                    " - "+views+
-                    " views ("+unique+
-                    " unique)");
-
-            count++;
-
-            if(count==10)
-                break;
+            maxTokens = max;
+            tokens = max;
+            lastRefillTime =
+                    System.currentTimeMillis();
         }
     }
 
-    // Traffic stats
-    static void getTrafficSources(){
+    static HashMap<String,TokenBucket> clients =
+            new HashMap<>();
 
-        int total = 0;
+    static int LIMIT = 1000;
+    static long INTERVAL = 3600000; // 1 hour
 
-        for(int v:trafficSource.values())
-            total += v;
+    static boolean checkRateLimit(String clientId){
 
-        System.out.println("\nTraffic Sources:");
+        clients.putIfAbsent(clientId,
+                new TokenBucket(LIMIT));
 
-        for(String s:trafficSource.keySet()){
+        TokenBucket bucket =
+                clients.get(clientId);
 
-            double percent =
-                    ((double)trafficSource.get(s)/total)*100;
+        long currentTime =
+                System.currentTimeMillis();
+
+        // refill tokens every hour
+        if(currentTime - bucket.lastRefillTime
+                >= INTERVAL){
+
+            bucket.tokens = LIMIT;
+            bucket.lastRefillTime = currentTime;
+        }
+
+        if(bucket.tokens > 0){
+
+            bucket.tokens--;
 
             System.out.println(
-                    s+" : "+percent+"%");
+                    "Allowed ("+
+                            bucket.tokens+
+                            " requests remaining)");
+
+            return true;
         }
+        else{
+
+            long retry =
+                    (INTERVAL -
+                            (currentTime-bucket.lastRefillTime))
+                            /1000;
+
+            System.out.println(
+                    "Denied (0 requests remaining, retry after "
+                            +retry+"s)");
+
+            return false;
+        }
+    }
+
+    static void getRateLimitStatus(
+            String clientId){
+
+        TokenBucket bucket =
+                clients.get(clientId);
+
+        int used =
+                LIMIT - bucket.tokens;
+
+        System.out.println(
+                "Used: "+used+
+                        " Limit: "+LIMIT);
     }
 
     public static void main(String[] args) {
 
-        processEvent("/article/news",
-                "user1","Google");
+        checkRateLimit("abc123");
+        checkRateLimit("abc123");
+        checkRateLimit("abc123");
 
-        processEvent("/article/news",
-                "user2","Facebook");
-
-        processEvent("/sports",
-                "user3","Direct");
-
-        processEvent("/article/news",
-                "user1","Google");
-
-        getTopPages();
-
-        getTrafficSources();
+        getRateLimitStatus("abc123");
     }
 }
