@@ -2,92 +2,113 @@ import java.util.*;
 
 public class w1w2 {
 
-    static class TokenBucket{
+    // Trie Node
+    static class TrieNode{
 
-        int tokens;
-        int maxTokens;
-        long lastRefillTime;
+        HashMap<Character,TrieNode> children =
+                new HashMap<>();
 
-        TokenBucket(int max){
-
-            maxTokens = max;
-            tokens = max;
-            lastRefillTime =
-                    System.currentTimeMillis();
-        }
+        boolean isEnd = false;
+        String word = "";
     }
 
-    static HashMap<String,TokenBucket> clients =
+    static TrieNode root = new TrieNode();
+
+    static HashMap<String,Integer> frequency =
             new HashMap<>();
 
-    static int LIMIT = 1000;
-    static long INTERVAL = 3600000; // 1 hour
+    // Insert query
+    static void insert(String query){
 
-    static boolean checkRateLimit(String clientId){
+        TrieNode node = root;
 
-        clients.putIfAbsent(clientId,
-                new TokenBucket(LIMIT));
+        for(char c:query.toCharArray()){
 
-        TokenBucket bucket =
-                clients.get(clientId);
+            node.children.putIfAbsent(c,
+                    new TrieNode());
 
-        long currentTime =
-                System.currentTimeMillis();
-
-        // refill tokens every hour
-        if(currentTime - bucket.lastRefillTime
-                >= INTERVAL){
-
-            bucket.tokens = LIMIT;
-            bucket.lastRefillTime = currentTime;
+            node = node.children.get(c);
         }
 
-        if(bucket.tokens > 0){
+        node.isEnd = true;
+        node.word = query;
 
-            bucket.tokens--;
-
-            System.out.println(
-                    "Allowed ("+
-                            bucket.tokens+
-                            " requests remaining)");
-
-            return true;
-        }
-        else{
-
-            long retry =
-                    (INTERVAL -
-                            (currentTime-bucket.lastRefillTime))
-                            /1000;
-
-            System.out.println(
-                    "Denied (0 requests remaining, retry after "
-                            +retry+"s)");
-
-            return false;
-        }
+        frequency.put(query,
+                frequency.getOrDefault(query,0)+1);
     }
 
-    static void getRateLimitStatus(
-            String clientId){
+    // DFS to collect suggestions
+    static void getWords(TrieNode node,
+                         List<String> list){
 
-        TokenBucket bucket =
-                clients.get(clientId);
+        if(node.isEnd)
+            list.add(node.word);
 
-        int used =
-                LIMIT - bucket.tokens;
+        for(char c:node.children.keySet())
+            getWords(node.children.get(c),
+                    list);
+    }
+
+    // Search prefix
+    static void search(String prefix){
+
+        TrieNode node = root;
+
+        for(char c:prefix.toCharArray()){
+
+            if(!node.children.containsKey(c)){
+
+                System.out.println(
+                        "No suggestions");
+                return;
+            }
+
+            node = node.children.get(c);
+        }
+
+        List<String> list =
+                new ArrayList<>();
+
+        getWords(node,list);
+
+        // sort by frequency
+        list.sort((a,b)->
+                frequency.get(b)-
+                        frequency.get(a));
 
         System.out.println(
-                "Used: "+used+
-                        " Limit: "+LIMIT);
+                "Top suggestions:");
+
+        int count=0;
+
+        for(String s:list){
+
+            System.out.println(
+                    s+" ("+
+                            frequency.get(s)+")");
+
+            count++;
+
+            if(count==10)
+                break;
+        }
     }
 
     public static void main(String[] args) {
 
-        checkRateLimit("abc123");
-        checkRateLimit("abc123");
-        checkRateLimit("abc123");
+        insert("java tutorial");
+        insert("javascript");
+        insert("java download");
+        insert("java tutorial");
 
-        getRateLimitStatus("abc123");
+        search("jav");
+
+        insert("java 21 features");
+
+        insert("java 21 features");
+
+        System.out.println(
+                "Updated frequency: "+
+                        frequency.get("java 21 features"));
     }
 }
