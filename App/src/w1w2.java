@@ -2,113 +2,131 @@ import java.util.*;
 
 public class w1w2 {
 
-    // Trie Node
-    static class TrieNode{
+    static class ParkingSpot{
 
-        HashMap<Character,TrieNode> children =
-                new HashMap<>();
+        String license;
+        long entryTime;
+        boolean occupied;
 
-        boolean isEnd = false;
-        String word = "";
+        ParkingSpot(){
+
+            license = null;
+            occupied = false;
+        }
     }
 
-    static TrieNode root = new TrieNode();
+    static int SIZE = 500;
 
-    static HashMap<String,Integer> frequency =
-            new HashMap<>();
+    static ParkingSpot table[] =
+            new ParkingSpot[SIZE];
 
-    // Insert query
-    static void insert(String query){
+    static int totalProbes = 0;
+    static int vehicles = 0;
 
-        TrieNode node = root;
+    // Initialize parking
+    static{
 
-        for(char c:query.toCharArray()){
+        for(int i=0;i<SIZE;i++)
+            table[i] = new ParkingSpot();
+    }
 
-            node.children.putIfAbsent(c,
-                    new TrieNode());
+    // Hash function
+    static int hash(String license){
 
-            node = node.children.get(c);
+        return Math.abs(
+                license.hashCode()) % SIZE;
+    }
+
+    // Park vehicle
+    static void parkVehicle(String license){
+
+        int index = hash(license);
+
+        int probes = 0;
+
+        while(table[index].occupied){
+
+            index = (index+1)%SIZE;
+            probes++;
         }
 
-        node.isEnd = true;
-        node.word = query;
+        table[index].license = license;
 
-        frequency.put(query,
-                frequency.getOrDefault(query,0)+1);
+        table[index].entryTime =
+                System.currentTimeMillis();
+
+        table[index].occupied = true;
+
+        vehicles++;
+        totalProbes += probes;
+
+        System.out.println(
+                "Assigned spot #"+index+
+                        " ("+probes+" probes)");
     }
 
-    // DFS to collect suggestions
-    static void getWords(TrieNode node,
-                         List<String> list){
+    // Exit vehicle
+    static void exitVehicle(String license){
 
-        if(node.isEnd)
-            list.add(node.word);
+        int index = hash(license);
 
-        for(char c:node.children.keySet())
-            getWords(node.children.get(c),
-                    list);
-    }
+        while(table[index].occupied){
 
-    // Search prefix
-    static void search(String prefix){
+            if(table[index].license.equals(license)){
 
-        TrieNode node = root;
+                long duration =
+                        (System.currentTimeMillis()
+                                -table[index].entryTime)/1000;
 
-        for(char c:prefix.toCharArray()){
+                table[index].occupied=false;
 
-            if(!node.children.containsKey(c)){
+                vehicles--;
+
+                double fee =
+                        duration*0.01;
 
                 System.out.println(
-                        "No suggestions");
+                        "Spot #"+index+
+                                " freed Duration: "+
+                                duration+" sec Fee: $"+
+                                fee);
+
                 return;
             }
 
-            node = node.children.get(c);
+            index=(index+1)%SIZE;
         }
 
-        List<String> list =
-                new ArrayList<>();
+        System.out.println("Vehicle not found");
+    }
 
-        getWords(node,list);
+    // Statistics
+    static void getStatistics(){
 
-        // sort by frequency
-        list.sort((a,b)->
-                frequency.get(b)-
-                        frequency.get(a));
+        double occupancy =
+                ((double)vehicles/SIZE)*100;
+
+        double avgProbes =
+                (vehicles==0)?0:
+                        (double)totalProbes/vehicles;
 
         System.out.println(
-                "Top suggestions:");
+                "Occupancy: "+occupancy+"%");
 
-        int count=0;
-
-        for(String s:list){
-
-            System.out.println(
-                    s+" ("+
-                            frequency.get(s)+")");
-
-            count++;
-
-            if(count==10)
-                break;
-        }
+        System.out.println(
+                "Avg Probes: "+avgProbes);
     }
 
     public static void main(String[] args) {
 
-        insert("java tutorial");
-        insert("javascript");
-        insert("java download");
-        insert("java tutorial");
+        parkVehicle("ABC1234");
 
-        search("jav");
+        parkVehicle("ABC1235");
 
-        insert("java 21 features");
+        parkVehicle("XYZ9999");
 
-        insert("java 21 features");
+        exitVehicle("ABC1234");
 
-        System.out.println(
-                "Updated frequency: "+
-                        frequency.get("java 21 features"));
+        getStatistics();
     }
 }
