@@ -2,106 +2,103 @@ import java.util.*;
 
 public class w1w2 {
 
-    static HashMap<String, Set<String>> ngramMap =
+    static HashMap<String,Integer> pageViews =
             new HashMap<>();
 
-    static int N = 5; // 5-gram
+    static HashMap<String,Set<String>> uniqueVisitors =
+            new HashMap<>();
 
-    // Generate n-grams
-    static List<String> generateNgrams(String text){
+    static HashMap<String,Integer> trafficSource =
+            new HashMap<>();
 
-        List<String> list = new ArrayList<>();
+    // Process event
+    static void processEvent(String url,
+                             String userId,
+                             String source){
 
-        String words[] = text.split(" ");
+        // count page views
+        pageViews.put(url,
+                pageViews.getOrDefault(url,0)+1);
 
-        for(int i=0;i<=words.length-N;i++){
+        // unique visitors
+        uniqueVisitors.putIfAbsent(url,
+                new HashSet<>());
 
-            String gram = "";
+        uniqueVisitors.get(url).add(userId);
 
-            for(int j=0;j<N;j++)
-                gram += words[i+j]+" ";
-
-            list.add(gram.trim());
-        }
-
-        return list;
+        // traffic sources
+        trafficSource.put(source,
+                trafficSource.getOrDefault(source,0)+1);
     }
 
-    // Store document ngrams
-    static void addDocument(String docId,
-                            String text){
+    // Top pages
+    static void getTopPages(){
 
-        List<String> grams =
-                generateNgrams(text);
+        List<Map.Entry<String,Integer>> list =
+                new ArrayList<>(pageViews.entrySet());
 
-        for(String gram:grams){
+        list.sort((a,b)->b.getValue()-a.getValue());
 
-            ngramMap.putIfAbsent(gram,
-                    new HashSet<>());
+        System.out.println("Top Pages:");
 
-            ngramMap.get(gram).add(docId);
+        int count = 0;
+
+        for(Map.Entry<String,Integer> e:list){
+
+            String url = e.getKey();
+            int views = e.getValue();
+
+            int unique =
+                    uniqueVisitors.get(url).size();
+
+            System.out.println(url+
+                    " - "+views+
+                    " views ("+unique+
+                    " unique)");
+
+            count++;
+
+            if(count==10)
+                break;
         }
-
-        System.out.println(docId+
-                " → Extracted "+grams.size()
-                +" n-grams");
     }
 
-    // Analyze plagiarism
-    static void analyzeDocument(String docId,
-                                String text){
+    // Traffic stats
+    static void getTrafficSources(){
 
-        List<String> grams =
-                generateNgrams(text);
+        int total = 0;
 
-        HashMap<String,Integer> matchCount =
-                new HashMap<>();
+        for(int v:trafficSource.values())
+            total += v;
 
-        for(String gram:grams){
+        System.out.println("\nTraffic Sources:");
 
-            if(ngramMap.containsKey(gram)){
+        for(String s:trafficSource.keySet()){
 
-                for(String doc:
-                        ngramMap.get(gram)){
-
-                    matchCount.put(doc,
-                            matchCount.getOrDefault(
-                                    doc,0)+1);
-                }
-            }
-        }
-
-        for(String doc:matchCount.keySet()){
-
-            int matches = matchCount.get(doc);
-
-            double similarity =
-                    ((double)matches/grams.size())*100;
+            double percent =
+                    ((double)trafficSource.get(s)/total)*100;
 
             System.out.println(
-                    "Found "+matches+
-                            " matching n-grams with "+doc);
-
-            System.out.println(
-                    "Similarity: "+
-                            similarity+"%");
-
-            if(similarity>60)
-                System.out.println(
-                        "PLAGIARISM DETECTED");
+                    s+" : "+percent+"%");
         }
     }
 
     public static void main(String[] args) {
 
-        String doc1 =
-                "data structures and algorithms are important subjects in computer science";
+        processEvent("/article/news",
+                "user1","Google");
 
-        String doc2 =
-                "data structures and algorithms are important topics in computer science";
+        processEvent("/article/news",
+                "user2","Facebook");
 
-        addDocument("essay_089",doc1);
+        processEvent("/sports",
+                "user3","Direct");
 
-        analyzeDocument("essay_123",doc2);
+        processEvent("/article/news",
+                "user1","Google");
+
+        getTopPages();
+
+        getTrafficSources();
     }
 }
