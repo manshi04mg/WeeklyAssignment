@@ -2,58 +2,94 @@ import java.util.*;
 
 public class w1w2 {
 
-    static HashMap<String,Integer> stockMap = new HashMap<>();
-    static LinkedHashMap<Integer,String> waitingList =
-            new LinkedHashMap<>();
+    static class DNSEntry{
 
-    static int waitPosition = 1;
+        String ip;
+        long expiryTime;
 
-    // Check stock
-    static void checkStock(String product){
+        DNSEntry(String ip,int ttl){
 
-        if(stockMap.containsKey(product))
-            System.out.println(stockMap.get(product)
-                    +" units available");
-        else
-            System.out.println("Product not found");
-    }
-
-    // Purchase item
-    static void purchaseItem(String product,int userId){
-
-        if(stockMap.get(product) > 0){
-
-            stockMap.put(product,
-                    stockMap.get(product)-1);
-
-            System.out.println("Success, "
-                    +stockMap.get(product)
-                    +" units remaining");
-        }
-        else{
-
-            waitingList.put(userId,product);
-
-            System.out.println(
-                    "Added to waiting list, position #"
-                            +waitPosition);
-
-            waitPosition++;
+            this.ip = ip;
+            this.expiryTime =
+                    System.currentTimeMillis() + ttl*1000;
         }
     }
 
-    public static void main(String[] args) {
+    static HashMap<String,DNSEntry> cache =
+            new HashMap<>();
 
-        stockMap.put("IPHONE15_256GB",100);
+    static int hits = 0;
+    static int misses = 0;
 
-        checkStock("IPHONE15_256GB");
+    // Resolve domain
+    static String resolve(String domain){
 
-        purchaseItem("IPHONE15_256GB",12345);
-        purchaseItem("IPHONE15_256GB",67890);
+        long currentTime =
+                System.currentTimeMillis();
 
-        // simulate stock ending
-        stockMap.put("IPHONE15_256GB",0);
+        if(cache.containsKey(domain)){
 
-        purchaseItem("IPHONE15_256GB",99999);
+            DNSEntry entry = cache.get(domain);
+
+            if(currentTime < entry.expiryTime){
+
+                hits++;
+                System.out.println(
+                        "Cache HIT");
+
+                return entry.ip;
+            }
+            else{
+
+                System.out.println(
+                        "Cache EXPIRED");
+
+                cache.remove(domain);
+            }
+        }
+
+        misses++;
+
+        System.out.println(
+                "Cache MISS → Query upstream");
+
+        // simulate DNS lookup
+        String newIP =
+                "172.217."+new Random().nextInt(50)
+                        +"."+new Random().nextInt(255);
+
+        cache.put(domain,
+                new DNSEntry(newIP,5));
+
+        return newIP;
+    }
+
+    // Cache statistics
+    static void getCacheStats(){
+
+        int total = hits + misses;
+
+        double hitRate =
+                (total==0)?0:((double)hits/total)*100;
+
+        System.out.println(
+                "Hit Rate: "+hitRate+"%");
+    }
+
+    public static void main(String[] args)
+            throws Exception{
+
+        System.out.println(
+                resolve("google.com"));
+
+        System.out.println(
+                resolve("google.com"));
+
+        Thread.sleep(6000);
+
+        System.out.println(
+                resolve("google.com"));
+
+        getCacheStats();
     }
 }
